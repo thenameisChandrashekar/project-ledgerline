@@ -74,9 +74,7 @@ class IdempotencyAndDegradedModeTest {
         assertThat(json.readTree(second)).isEqualTo(json.readTree(first));
         Long id = loanFiles.findByFileId("LF-IDEMP-1").orElseThrow().getId();
         assertThat(loanFiles.findAll().stream().filter(f -> f.getFileId().equals("LF-IDEMP-1"))).hasSize(1);
-        // Compare with the first response rather than a fixed number: the shared in-memory fingerprint store may
-        // already hold the same ledger from another test, which legitimately adds DOCUMENT_REUSED.
-        assertThat(ruleHits.findByLoanFileIdOrderById(id)).hasSize(json.readTree(first).get("ruleHits").size());
+        assertThat(ruleHits.findByLoanFileIdOrderById(id)).hasSize(2);
         assertThat(cases.findAll().stream().filter(c -> c.getLoanFileId().equals(id))).hasSize(1);
     }
 
