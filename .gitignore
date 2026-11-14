@@ -1,0 +1,16 @@
+# Java / Maven
+target/
+*.class
+*.log
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+# Node
+node_modules/
+dist/
+coverage/
+# Env & generated data
+.env
+data/generated/
