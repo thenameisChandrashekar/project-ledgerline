@@ -73,10 +73,12 @@ class RulesTest {
 
         @Test
         void slipWithoutAnyCreditFiresWithUnmatchedMonth() {
+            // Remove the August salary (paid 2 Sep). Removing September's instead would not fire: the August credit
+            // on 2 Sep also falls inside September's window and matches its net pay, exactly as the spec defines it.
             List<Transaction> txns = new ArrayList<>(cleanTransactions());
-            txns.remove(4); // September salary credit
+            txns.remove(1);
             var hit = rule.evaluate(withTransactions(txns)).orElseThrow();
-            assertThat(hit.evidence()).isEqualTo(Map.of("unmatchedMonths", List.of("2026-09")));
+            assertThat(hit.evidence()).isEqualTo(Map.of("unmatchedMonths", List.of("2026-08")));
         }
 
         @Test
@@ -100,8 +102,10 @@ class RulesTest {
         @Test
         void creditMoreThanTwoPercentOffDoesNotCount() {
             List<Transaction> txns = new ArrayList<>(cleanTransactions());
-            txns.set(4, txn("2026-10-01", "NEFT/NORTHWIND ANALYTICS PRIVATE LIMITED/SAL SEP", "CR", "53100.00", "94339.50"));
-            assertThat(rule.evaluate(withTransactions(txns))).isPresent();
+            // August credit 53,100 is 2.1% above net pay 52,000, so August has no matching credit.
+            txns.set(1, txn("2026-09-02", "NEFT/NORTHWIND ANALYTICS PRIVATE LIMITED/SAL AUG", "CR", "53100.00", "62650.00"));
+            var hit = rule.evaluate(withTransactions(txns)).orElseThrow();
+            assertThat(hit.evidence()).isEqualTo(Map.of("unmatchedMonths", List.of("2026-08")));
         }
     }
 
