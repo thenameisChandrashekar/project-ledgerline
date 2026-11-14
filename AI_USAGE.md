@@ -54,5 +54,6 @@ The Spring Boot build and backend tests were run on my machine.
 The project was developed locally as a sequence of small Conventional Commits with a feature branch for Task 3.
 `git push` from my machine was rejected with HTTP 403, so the commits were re-created on GitHub through the web
 uploader (directory by directory, in the original order, with the original messages). That is why some commits are
-split per folder and a few say "add missing" files: the web uploader occasionally dropped files from a batch, and
-they were re-uploaded afterwards.
+split per folder. The web uploader occasionally dropped files from a batch; those were re-uploaded in later commits,
+and one `chore: align` commit copied the Task 3 versions of `CaseController` and `GlobalExceptionHandler` to `main`
+so the pull request could merge without an add/add conflict.

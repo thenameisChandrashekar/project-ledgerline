@@ -55,10 +55,10 @@ cd backend && mvn spring-boot:run    # http://localhost:8080 (Flyway migrates on
 Post a sample file:
 
 ```bash
-scripts/generate.sh 330 data/generated        # 330 files incl. 30 recycled statements + labels.csv
+bash scripts/generate.sh 330 data/generated   # 330 files incl. 30 recycled statements + labels.csv
 curl -s -X POST localhost:8080/api/loan-files -H 'Content-Type: application/json' \
   --data @data/generated/files/LF-00001.json | jq
-scripts/post-files.sh data/generated/files    # post all, prints counts per band
+bash scripts/post-files.sh data/generated/files # post all, prints counts per band
 curl -s 'localhost:8080/api/cases?status=OPEN' | jq '.[0]'
 ```
 
@@ -67,6 +67,38 @@ UI (with the backend running):
 ```bash
 cd frontend && npm install && npm run dev     # http://localhost:5173, proxies /api to :8080
 ```
+
+### FCU case screen
+
+- **Queue (left):** table of cases with score, band badge (LOW/REFER/HIGH), applicant, file id and status, highest
+  score first (sorted by the API). A status dropdown filters OPEN, REFER_FIELD_VERIFICATION, CLEARED, FRAUD_CONFIRMED or
+  ALL. Clicking a row opens the case.
+- **Detail (right):** applicant, file id, masked PAN (`******234F`) and account (`XXXXXXXX4821`), score, band and
+  status; a warning if a signal was degraded; one card per rule hit with points, reason and readable evidence (for
+  example "Row 41 on 2026-07-18: expected balance ₹88,210.40, statement shows ₹131,210.40", the unmatched salary months,
+  the edited documents and failed checks, or the other files sharing a statement); the audit history (time, analyst,
+  from → to, comment).
+- **Dispositions:** a comment box and only the buttons the state machine allows (OPEN: Cleared / Refer field
+  verification / Fraud confirmed; REFER_FIELD_VERIFICATION: Cleared / Fraud confirmed; none for final states). The
+  analyst name in the header is sent as `X-User`. If the API rejects the call (short comment, invalid transition) its
+  error message is shown under the buttons; on success the case and queue refresh.
+
+## Design decisions
+
+- **Pure rule engine.** `engine` and `fingerprint` have no Spring imports, so every rule is unit-tested directly and
+  the module could be reused by a CLI or another service. Spring only wires configuration and I/O.
+- **Configuration over code.** Every point value, tolerance, list and threshold binds from `application.yml` into
+  `RulesConfig`; tests prove a config change moves a file between bands.
+- **Explainability first.** Each rule returns a reason string and a structured evidence map that is stored as JSON
+  and rendered by the UI, so an analyst never sees a bare score.
+- **Masking at the boundary.** Full identifiers stay in PostgreSQL; `ResultMapper` and log statements are the only
+  exits and always mask. Redis gets a PAN digest only.
+- **Fail safe, not open.** When Redis is slow or down the file is still evaluated, flagged as degraded and floored to
+  REFER, and its fingerprints are not recorded.
+- **Database-enforced idempotency.** A unique constraint on `file_id` plus a payload hash gives replay (200) vs
+  conflict (409) even under concurrent duplicates.
+- **Server-side state machine.** Allowed disposition transitions live in `DispositionService`; the UI only mirrors
+  them, and every change appends an audit row in the same transaction.
 
 ## API
 
@@ -172,7 +204,7 @@ What is covered:
 
 ### Rule evaluation on the generated dataset
 
-`scripts/evaluate.sh` (or `DatasetEvaluationTest`, which asserts the targets) – 330 files, seed 42, evaluated in order
+`bash scripts/evaluate.sh` (or `DatasetEvaluationTest`, which asserts the targets) – 330 files, seed 42, evaluated in order
 with the in-memory fingerprint store:
 
 | Seeded pattern | Files | Expected rule | Fired expected rule | Fired any rule | REFER/HIGH |
@@ -197,13 +229,15 @@ refund and interest credits, and names that differ only in case and spacing.
 ```bash
 docker compose down -v && docker compose up -d   # clean PostgreSQL + Redis
 cd backend && mvn -q -DskipTests package && java -jar target/ledgerline-0.1.0.jar &
-scripts/load.sh http://localhost:8080 1000 10 50  # 1000 new files, 10 clients, 50 recycled
+bash scripts/load.sh http://localhost:8080 1000 10 50  # 1000 new files, 10 clients, 50 recycled
 ```
 
 The runner prints counts per band, `DOCUMENT_REUSED` hits, recycled files flagged, and p50/p95 latency.
 
 <!-- LOAD-RESULTS: paste the output of scripts/load.sh here -->
-_Result to be filled in from a local run (target p95 < 150 ms on a laptop)._
+_Not yet measured: the run needs PostgreSQL and Redis, which were not available while this was written. Target is
+p95 < 150 ms on a laptop; the command above prints band counts, `DOCUMENT_REUSED` hits, recycled files flagged and
+p50/p95._
 
 ## Security and data handling
 
