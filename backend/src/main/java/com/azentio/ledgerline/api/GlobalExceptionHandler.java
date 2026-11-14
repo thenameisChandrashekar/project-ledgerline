@@ -4,7 +4,9 @@ import com.azentio.ledgerline.service.ConflictException;
 import com.azentio.ledgerline.service.NotFoundException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -26,7 +28,8 @@ public class GlobalExceptionHandler {
                 .map(e -> new ApiError.FieldError(e.getField(), e.getDefaultMessage()))
                 .sorted(Comparator.comparing(ApiError.FieldError::field))
                 .toList();
-        return new ApiError("VALIDATION_FAILED", "Request has invalid fields", fields);
+        String summary = fields.stream().map(f -> f.field() + " " + f.message()).collect(Collectors.joining("; "));
+        return new ApiError("VALIDATION_FAILED", summary, fields);
     }
 
     /** Malformed JSON or a value of the wrong shape (for example an unparsable date). */
@@ -48,6 +51,18 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError missingHeader(MissingRequestHeaderException ex) {
         return ApiError.of("MISSING_HEADER", "Header " + ex.getHeaderName() + " is required");
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError constraint(ConstraintViolationException ex) {
+        return ApiError.of("VALIDATION_FAILED", ex.getMessage());
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiError concurrentUpdate(ObjectOptimisticLockingFailureException ex) {
+        return ApiError.of("CONFLICT", "The case was changed by someone else; reload and try again");
     }
 
     @ExceptionHandler(NotFoundException.class)
