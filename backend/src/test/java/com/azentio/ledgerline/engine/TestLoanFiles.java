@@ -58,6 +58,11 @@ public final class TestLoanFiles {
                 statement);
     }
 
+    public static LoanFile withFileId(LoanFile f, String fileId) {
+        return new LoanFile(fileId, f.submittedAt(), f.applicant(), f.declaredMonthlyIncome(), f.employerName(),
+                f.salarySlips(), f.bankStatement());
+    }
+
     public static LoanFile withDeclared(LoanFile f, String declared) {
         return new LoanFile(f.fileId(), f.submittedAt(), f.applicant(), new BigDecimal(declared), f.employerName(),
                 f.salarySlips(), f.bankStatement());
