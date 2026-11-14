@@ -34,7 +34,7 @@ CREATE TABLE fcu_case (
     status        VARCHAR(30)  NOT NULL,
     created_at    TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at    TIMESTAMP WITH TIME ZONE NOT NULL,
-    version       BIGINT       NOT NULL DEFAULT 0,
+    version       BIGINT       DEFAULT 0 NOT NULL,
     CONSTRAINT uq_fcu_case_loan_file UNIQUE (loan_file_id)
 );
 -- Supports GET /api/cases?status=... ordered by score (highest first).
