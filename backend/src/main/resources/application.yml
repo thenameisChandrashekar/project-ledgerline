@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: ledgerline
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ledgerline}
+    username: ${DB_USER:ledgerline}
+    password: ${DB_PASSWORD:ledgerline}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none   # Flyway owns the schema
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 200ms
+      connect-timeout: 500ms
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${PORT:8080}
+
+ledgerline:
+  rules:
+    balance-break:
+      points: 50
+      tolerance: 0.01
+    salary-credit-missing:
+      points: 40
+      amount-tolerance: 0.02   # 2%
+      grace-days: 7
+    declared-income:
+      points: 25
+      max-ratio: 1.2
+    doc-metadata:
+      points: 30
+      max-modified-after-created-hours: 24
+      editing-tools:
+        - Acrobat Pro
+        - PDFelement
+        - Foxit PhantomPDF
+        - iLovePDF
+        - Sejda
+        - Smallpdf
+        - PDF-XChange Editor
+    name-mismatch:
+      points: 20
+    document-reused:
+      points: 60
+      window-days: 180
+    bands:
+      refer: 30
+      high: 60
+  fingerprint:
+    store: redis
+    timeout-ms: 50
+    pool-size: 32
