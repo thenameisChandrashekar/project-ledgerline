@@ -32,8 +32,9 @@ public class CaseEntity {
     private Instant createdAt;
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+    /** Wrapper type so Spring Data treats a fresh case (assigned id, null version) as new. */
     @Version
-    private long version;
+    private Long version;
 
     protected CaseEntity() {
     }
